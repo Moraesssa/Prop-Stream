@@ -1,0 +1,33 @@
+.app-shell {
+  font-family: system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell__header {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.app-shell__header nav a {
+  color: #cbd5f5;
+  margin-inline: 0.75rem;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.app-shell__header nav a.active {
+  color: #38bdf8;
+}
+
+.app-shell__main {
+  flex: 1;
+  padding: 2rem;
+  background: #f1f5f9;
+}
