@@ -1,0 +1,10 @@
+{
+  "name": "prop-stream",
+  "version": "0.1.0",
+  "description": "Frontend service layer and utilities for Prop-Stream platform",
+  "type": "module",
+  "scripts": {
+    "build": "npx tsc",
+    "test": "npm run build && node --test dist/tests"
+  }
+}

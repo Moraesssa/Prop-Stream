@@ -1,0 +1,7 @@
+dist/
+node_modules/*
+!node_modules/axios/
+!node_modules/axios/**
+!node_modules/uuid/
+!node_modules/uuid/**
+.npm/
