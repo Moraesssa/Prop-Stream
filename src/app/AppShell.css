@@ -1,0 +1,171 @@
+.app-shell {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #111827, #020617 60%);
+  color: #f8fafc;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.app-shell__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(16px);
+}
+
+.app-shell__brand {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.app-shell__alerts-toggle {
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  color: #0f172a;
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.app-shell__alerts-toggle:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+.app-shell__alerts-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.25);
+}
+
+.app-shell__layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  transition: grid-template-columns 200ms ease;
+}
+
+.app-shell__layout--alerts-open {
+  grid-template-columns: minmax(0, 1fr) 20rem;
+}
+
+.app-shell__main {
+  min-width: 0;
+  padding: clamp(1.5rem, 2.5vw, 2.5rem);
+}
+
+.app-shell__alerts {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(20rem, 90vw);
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.95);
+  border-left: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: -24px 0 48px rgba(2, 6, 23, 0.6);
+  z-index: 30;
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 240ms ease, opacity 240ms ease;
+}
+
+.app-shell__alerts--open {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.app-shell__layout--alerts-open .app-shell__alerts {
+  position: relative;
+  width: 100%;
+  height: auto;
+}
+
+.app-shell__alerts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.app-shell__alerts-header button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.875rem;
+  opacity: 0.75;
+}
+
+.app-shell__alerts-header button:hover {
+  opacity: 1;
+}
+
+.app-shell__alerts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.app-shell__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  border: 0;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  z-index: 20;
+}
+
+.app-shell__backdrop--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 64rem) {
+  .app-shell__layout--alerts-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell__layout--alerts-open .app-shell__alerts {
+    position: fixed;
+    top: 5rem;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    width: auto;
+    border-radius: 1rem;
+    border-left: none;
+    box-shadow: 0 32px 60px rgba(2, 6, 23, 0.6);
+  }
+}
