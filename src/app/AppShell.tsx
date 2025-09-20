@@ -44,9 +44,11 @@ export function AppShell() {
   const alertsTitleId = useId();
   const portfolioLabelId = useId();
   const dispatch = useAppDispatch();
-  const selectedPortfolio = useAppSelector(selectActivePortfolioId);
-  const userProfile = useAppSelector(selectUserProfile);
-  const fixedWidgets = useAppSelector(selectUserFixedWidgets);
+  const selectedPortfolio = useAppSelector((state) =>
+    selectActivePortfolioId(state),
+  );
+  const userProfile = useAppSelector((state) => selectUserProfile(state));
+  const fixedWidgets = useAppSelector((state) => selectUserFixedWidgets(state));
   const [isPortfolioInitialized, setPortfolioInitialized] = useState(false);
 
   useEffect(() => {

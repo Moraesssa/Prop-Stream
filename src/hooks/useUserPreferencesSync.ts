@@ -88,17 +88,17 @@ function arePreferencesEqual(a: UserPreferences, b: UserPreferences): boolean {
 export function useUserPreferencesSync() {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
-  const userId = useAppSelector(selectUserId);
-  const status = useAppSelector(selectUserPreferencesStatus);
-  const preferences = useAppSelector(selectUserPreferences);
-  const hydrated = useAppSelector(selectUserPreferencesHydrated);
+  const userId = useAppSelector((state) => selectUserId(state));
+  const status = useAppSelector((state) => selectUserPreferencesStatus(state));
+  const preferences = useAppSelector((state) => selectUserPreferences(state));
+  const hydrated = useAppSelector((state) => selectUserPreferencesHydrated(state));
   const previousRef = useRef<UserPreferences | null>(null);
 
   const enabled = Boolean(userId);
 
-  useQuery({
+  const query = useQuery<UserPreferences>({
     queryKey: enabled ? ['user', userId, 'preferences'] : DEFAULT_QUERY_KEY,
-    queryFn: async () => {
+    queryFn: async (): Promise<UserPreferences> => {
       if (!userId) {
         return getDefaultUserPreferences();
       }
@@ -109,22 +109,32 @@ export function useUserPreferencesSync() {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
-    onSuccess: (data) => {
-      dispatch(setUserPreferences(data));
-      dispatch(markPreferencesHydrated(true));
-      dispatch(setUserPreferencesStatus('ready'));
-      dispatch(setUserPreferencesError(null));
-      previousRef.current = data;
-    },
-    onError: (error) => {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível carregar as preferências do usuário.';
-      dispatch(setUserPreferencesError(message));
-      dispatch(setUserPreferencesStatus('error'));
-    },
   });
+
+  useEffect(() => {
+    if (!query.isSuccess || !query.data) {
+      return;
+    }
+
+    dispatch(setUserPreferences(query.data));
+    dispatch(markPreferencesHydrated(true));
+    dispatch(setUserPreferencesStatus('ready'));
+    dispatch(setUserPreferencesError(null));
+    previousRef.current = query.data;
+  }, [dispatch, query.data, query.isSuccess]);
+
+  useEffect(() => {
+    if (!query.isError) {
+      return;
+    }
+
+    const message =
+      query.error instanceof Error
+        ? query.error.message
+        : 'Não foi possível carregar as preferências do usuário.';
+    dispatch(setUserPreferencesError(message));
+    dispatch(setUserPreferencesStatus('error'));
+  }, [dispatch, query.error, query.isError]);
 
   useEffect(() => {
     if (!enabled) {

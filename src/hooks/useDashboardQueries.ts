@@ -5,6 +5,7 @@ import {
   assertDashboardSuccess,
   fetchDashboardSummary,
   type DashboardFilters,
+  type DashboardSummary,
   type DashboardTimeframe,
 } from '@/services/dashboardService';
 import {
@@ -82,10 +83,10 @@ export function useDashboardSummaryQuery(
     }
   }, [dispatch, scope, options?.timeframe, storedTimeframe, activeTimeframe]);
 
-  return useQuery({
+  const query = useQuery<DashboardSummary, unknown, DashboardSummary, DashboardQueryKey>({
     queryKey,
     enabled: options?.enabled ?? true,
-    queryFn: async () => {
+    queryFn: async (): Promise<DashboardSummary> => {
       dispatch(setDashboardStatus({ scope, status: 'loading' }));
       const result = await fetchDashboardSummary({
         scope,
@@ -96,24 +97,36 @@ export function useDashboardSummaryQuery(
       return result.data;
     },
     staleTime: 60_000,
-    onSuccess: (data) => {
-      dispatch(setDashboardSummary({ scope, summary: data }));
-      dispatch(setDashboardStatus({ scope, status: 'succeeded' }));
-      dispatch(setDashboardError({ scope, error: null }));
-    },
-    onError: (error) => {
-      dispatch(setDashboardStatus({ scope, status: 'failed' }));
-      dispatch(
-        setDashboardError({
-          scope,
-          error: getErrorMessage(
-            error,
-            'Não foi possível carregar os indicadores.',
-          ),
-        }),
-      );
-    },
   });
+
+  useEffect(() => {
+    if (!query.isSuccess || !query.data) {
+      return;
+    }
+
+    dispatch(setDashboardSummary({ scope, summary: query.data }));
+    dispatch(setDashboardStatus({ scope, status: 'succeeded' }));
+    dispatch(setDashboardError({ scope, error: null }));
+  }, [dispatch, query.data, query.isSuccess, scope]);
+
+  useEffect(() => {
+    if (!query.isError) {
+      return;
+    }
+
+    dispatch(setDashboardStatus({ scope, status: 'failed' }));
+    dispatch(
+      setDashboardError({
+        scope,
+        error: getErrorMessage(
+          query.error,
+          'Não foi possível carregar os indicadores.',
+        ),
+      }),
+    );
+  }, [dispatch, query.error, query.isError, scope]);
+
+  return query;
 }
 
 export function useInvalidateDashboardSummary(scope: string) {

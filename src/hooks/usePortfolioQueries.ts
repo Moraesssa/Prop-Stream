@@ -5,6 +5,7 @@ import {
   assertPortfolioSuccess,
   fetchPortfolioSnapshot,
   type PortfolioFilters,
+  type PortfolioSnapshot,
 } from '@/services/portfolioService';
 import {
   selectActivePortfolioId,
@@ -72,10 +73,10 @@ export function usePortfolioSnapshotQuery(
     }
   }, [dispatch, options?.portfolioId, activePortfolioId, portfolioId]);
 
-  return useQuery({
+  const query = useQuery<PortfolioSnapshot, unknown, PortfolioSnapshot, PortfolioQueryKey>({
     queryKey,
     enabled: (options?.enabled ?? true) && Boolean(portfolioId),
-    queryFn: async () => {
+    queryFn: async (): Promise<PortfolioSnapshot> => {
       dispatch(setPortfolioStatus({ portfolioId, status: 'loading' }));
       const result = await fetchPortfolioSnapshot({
         portfolioId,
@@ -85,24 +86,36 @@ export function usePortfolioSnapshotQuery(
       return result.data;
     },
     staleTime: 60_000,
-    onSuccess: (data) => {
-      dispatch(setPortfolioSnapshot({ portfolioId, snapshot: data }));
-      dispatch(setPortfolioStatus({ portfolioId, status: 'succeeded' }));
-      dispatch(setPortfolioError({ portfolioId, error: null }));
-    },
-    onError: (error) => {
-      dispatch(setPortfolioStatus({ portfolioId, status: 'failed' }));
-      dispatch(
-        setPortfolioError({
-          portfolioId,
-          error: getErrorMessage(
-            error,
-            'Não foi possível carregar os dados do portfólio.',
-          ),
-        }),
-      );
-    },
   });
+
+  useEffect(() => {
+    if (!query.isSuccess || !query.data) {
+      return;
+    }
+
+    dispatch(setPortfolioSnapshot({ portfolioId, snapshot: query.data }));
+    dispatch(setPortfolioStatus({ portfolioId, status: 'succeeded' }));
+    dispatch(setPortfolioError({ portfolioId, error: null }));
+  }, [dispatch, portfolioId, query.data, query.isSuccess]);
+
+  useEffect(() => {
+    if (!query.isError) {
+      return;
+    }
+
+    dispatch(setPortfolioStatus({ portfolioId, status: 'failed' }));
+    dispatch(
+      setPortfolioError({
+        portfolioId,
+        error: getErrorMessage(
+          query.error,
+          'Não foi possível carregar os dados do portfólio.',
+        ),
+      }),
+    );
+  }, [dispatch, portfolioId, query.error, query.isError]);
+
+  return query;
 }
 
 export function useInvalidatePortfolioSnapshot() {

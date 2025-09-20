@@ -1,6 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 
 import { usePortfolioSnapshotQuery } from '@/hooks/usePortfolioQueries';
+import DomainState from '@/domains/components/DomainState';
 import { useAppSelector } from '@/store/hooks';
 import {
   selectActivePortfolioId,
@@ -8,6 +10,7 @@ import {
   selectPortfolioSnapshot,
   selectPortfolioStatus,
 } from '@/store/portfolioSlice';
+import { trackEvent } from '@/observability/metrics';
 
 type NavigationLink = {
   readonly label: string;
@@ -33,7 +36,9 @@ const percentFormatter = new Intl.NumberFormat('pt-BR', {
 });
 
 function PortfolioLayout() {
-  const activePortfolioId = useAppSelector(selectActivePortfolioId);
+  const activePortfolioId = useAppSelector((state) =>
+    selectActivePortfolioId(state),
+  );
   usePortfolioSnapshotQuery({ portfolioId: activePortfolioId });
 
   return (
@@ -74,9 +79,26 @@ function PortfolioLayout() {
 }
 
 function PortfolioOverview() {
-  const snapshot = useAppSelector(selectPortfolioSnapshot);
-  const status = useAppSelector(selectPortfolioStatus);
-  const error = useAppSelector(selectPortfolioError);
+  const snapshot = useAppSelector((state) => selectPortfolioSnapshot(state));
+  const status = useAppSelector((state) => selectPortfolioStatus(state));
+  const error = useAppSelector((state) => selectPortfolioError(state));
+  const lastUpdateRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!snapshot?.updatedAt) {
+      return;
+    }
+
+    if (snapshot.updatedAt === lastUpdateRef.current) {
+      return;
+    }
+
+    lastUpdateRef.current = snapshot.updatedAt;
+    trackEvent('portfolio.snapshot.updated', {
+      portfolioId: snapshot.portfolioId,
+      positions: snapshot.positions.length,
+    });
+  }, [snapshot]);
 
   return (
     <article className="domain__section">
@@ -88,13 +110,19 @@ function PortfolioOverview() {
       </header>
 
       {status === 'failed' && error ? (
-        <div className="domain__alert domain__alert--error" role="alert">
-          {error}
-        </div>
+        <DomainState
+          variant="error"
+          title="Não foi possível carregar o portfólio."
+          description={error}
+        />
       ) : null}
 
       {!snapshot && status === 'loading' ? (
-        <p className="domain__status">Carregando dados do portfólio…</p>
+        <DomainState
+          variant="loading"
+          title="Carregando dados do portfólio"
+          description="Recuperando informações consolidadas do veículo selecionado."
+        />
       ) : null}
 
       {snapshot ? (
@@ -137,12 +165,20 @@ function PortfolioOverview() {
           </div>
         </dl>
       ) : null}
+
+      {!snapshot && status !== 'loading' && status !== 'failed' ? (
+        <DomainState
+          variant="empty"
+          title="Selecione um portfólio ativo"
+          description="Escolha um portfólio para visualizar a visão consolidada."
+        />
+      ) : null}
     </article>
   );
 }
 
 function PortfolioDistribution() {
-  const snapshot = useAppSelector(selectPortfolioSnapshot);
+  const snapshot = useAppSelector((state) => selectPortfolioSnapshot(state));
 
   return (
     <article className="domain__section">
@@ -177,14 +213,18 @@ function PortfolioDistribution() {
           </table>
         </div>
       ) : (
-        <p>Selecione um portfólio ativo para visualizar a distribuição.</p>
+        <DomainState
+          variant="empty"
+          title="Nenhum portfólio selecionado"
+          description="Selecione um portfólio ativo para visualizar a distribuição."
+        />
       )}
     </article>
   );
 }
 
 function PortfolioIndicators() {
-  const snapshot = useAppSelector(selectPortfolioSnapshot);
+  const snapshot = useAppSelector((state) => selectPortfolioSnapshot(state));
 
   return (
     <article className="domain__section">
@@ -214,7 +254,11 @@ function PortfolioIndicators() {
           )}
         </ul>
       ) : (
-        <p>Nenhum indicador operacional disponível.</p>
+        <DomainState
+          variant="empty"
+          title="Nenhum indicador operacional disponível"
+          description="Selecione um portfólio ativo para acompanhar eventos e tarefas."
+        />
       )}
     </article>
   );
