@@ -6,6 +6,14 @@ import axios, {
   AxiosResponse,
 } from 'axios';
 
+import {
+  startSpan,
+  trackError,
+  trackEvent,
+  type TelemetryAttributes,
+  type TelemetrySpan,
+} from '@/observability/metrics';
+
 export type AccessTokenProvider = () =>
   | string
   | null
@@ -42,6 +50,15 @@ export interface HttpRequestConfig<TData = unknown>
   __retryCount?: number;
   /** @internal */
   __isAuthRetry?: boolean;
+  /** @internal */
+  __attemptCount?: number;
+  /** @internal */
+  __telemetryRequestId?: string;
+  /** @internal */
+  __telemetry?: {
+    span: TelemetrySpan;
+    attributes: TelemetryAttributes;
+  };
 }
 
 export interface HttpSuccessResponse<TData = unknown> {
@@ -123,6 +140,33 @@ let refreshTokenHandler: RefreshTokenHandler | null = null;
 let unauthorizedHandler: UnauthorizedHandler | null = null;
 let httpErrorHandler: HttpErrorHandler | null = null;
 let refreshPromise: Promise<string | null> | null = null;
+
+function createRequestId() {
+  return `http-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function resolveTelemetryAttributes(config: HttpRequestConfig) {
+  const method = (config.method ?? 'get').toUpperCase();
+  const url =
+    typeof config.url === 'string' && config.url.length > 0
+      ? config.url
+      : config.baseURL ?? httpClient.defaults.baseURL ?? '/';
+  const requestId = config.__telemetryRequestId ?? createRequestId();
+  const attempt = (config.__attemptCount ?? 0) + 1;
+
+  config.__telemetryRequestId = requestId;
+  config.__attemptCount = attempt;
+
+  const attributes: TelemetryAttributes = {
+    requestId,
+    method,
+    url,
+    attempt,
+    retryCount: config.__retryCount ?? 0,
+  };
+
+  return attributes;
+}
 
 function resolveAuthorizationHeader(token: string, config: HttpRequestConfig) {
   if (!token) {
@@ -237,9 +281,35 @@ async function applyRetry(
     return false;
   }
 
+  const attempt = currentRetryCount + 1;
   const nextRetryCount = currentRetryCount + 1;
   config.__retryCount = nextRetryCount;
   const delay = Math.max(0, policy.retryDelay(nextRetryCount, error));
+
+  const telemetry = config.__telemetry;
+  if (telemetry) {
+    const duration = telemetry.span.end({
+      outcome: 'retry',
+      status: error.response?.status,
+    });
+    trackEvent('http.request.retry', {
+      ...telemetry.attributes,
+      status: error.response?.status,
+      delay,
+      duration,
+      nextAttempt: nextRetryCount + 1,
+    });
+  } else {
+    trackEvent('http.request.retry', {
+      status: error.response?.status,
+      delay,
+      attempt,
+      nextAttempt: nextRetryCount + 1,
+    });
+  }
+
+  config.__telemetry = undefined;
+
   if (delay > 0) {
     await wait(delay);
   }
@@ -283,6 +353,19 @@ async function applyAuthenticationRetry(
     }
 
     resolveAuthorizationHeader(newToken, config);
+    const telemetry = config.__telemetry;
+    if (telemetry) {
+      const duration = telemetry.span.end({
+        outcome: 'auth-retry',
+        status: error.response?.status,
+      });
+      trackEvent('http.request.authRetry', {
+        ...telemetry.attributes,
+        status: error.response?.status,
+        duration,
+      });
+    }
+    config.__telemetry = undefined;
     return true;
   } catch (refreshError) {
     console.warn('Refresh token handler failed', refreshError);
@@ -376,6 +459,10 @@ export function setDefaultRetryPolicy(policy: RetryPolicy) {
 
 httpClient.interceptors.request.use(async (config) => {
   const enrichedConfig = config as HttpRequestConfig & typeof config;
+  const telemetryAttributes = resolveTelemetryAttributes(enrichedConfig);
+  const span = startSpan('http.request', telemetryAttributes);
+  enrichedConfig.__telemetry = { span, attributes: telemetryAttributes };
+  trackEvent('http.request.start', telemetryAttributes);
 
   if (enrichedConfig.skipAuth) {
     return config;
@@ -390,10 +477,34 @@ httpClient.interceptors.request.use(async (config) => {
 });
 
 httpClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const enrichedConfig = response.config as HttpRequestConfig;
+    const telemetry = enrichedConfig.__telemetry;
+    if (telemetry) {
+      const duration = telemetry.span.end({
+        status: response.status,
+        outcome: 'success',
+      });
+      trackEvent('http.request.success', {
+        ...telemetry.attributes,
+        status: response.status,
+        duration,
+      });
+      enrichedConfig.__telemetry = undefined;
+      enrichedConfig.__telemetryRequestId = undefined;
+    }
+
+    return response;
+  },
   async (error) => {
     if (!axios.isAxiosError(error) || !error.config) {
       const normalized = normalizeHttpError(error);
+      trackError('http.request.error', normalized, {
+        status: normalized.status,
+        code: normalized.code,
+        isNetworkError: normalized.isNetworkError,
+        isTimeout: normalized.isTimeout,
+      });
       httpErrorHandler?.(normalized);
       return Promise.reject(normalized);
     }
@@ -409,6 +520,31 @@ httpClient.interceptors.response.use(
     }
 
     const normalized = normalizeHttpError(error);
+    const telemetry = enrichedConfig.__telemetry;
+
+    if (telemetry) {
+      const duration = telemetry.span.end({
+        status: normalized.status,
+        outcome: 'error',
+      });
+      trackError('http.request.error', normalized, {
+        ...telemetry.attributes,
+        status: normalized.status,
+        code: normalized.code,
+        duration,
+        isNetworkError: normalized.isNetworkError,
+        isTimeout: normalized.isTimeout,
+      });
+      enrichedConfig.__telemetry = undefined;
+      enrichedConfig.__telemetryRequestId = undefined;
+    } else {
+      trackError('http.request.error', normalized, {
+        status: normalized.status,
+        code: normalized.code,
+        isNetworkError: normalized.isNetworkError,
+        isTimeout: normalized.isTimeout,
+      });
+    }
 
     if (normalized.status === 401) {
       unauthorizedHandler?.(normalized);

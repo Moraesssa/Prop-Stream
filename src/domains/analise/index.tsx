@@ -1,10 +1,11 @@
-import { ChangeEvent } from 'react';
+import { ChangeEvent, useEffect, useRef } from 'react';
 import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 
 import {
   useDashboardSummaryQuery,
   useInvalidateDashboardSummary,
 } from '@/hooks/useDashboardQueries';
+import DomainState from '@/domains/components/DomainState';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   selectDashboardError,
@@ -14,6 +15,7 @@ import {
   setDashboardTimeframe,
 } from '@/store/dashboardsSlice';
 import type { DashboardTimeframe } from '@/services/dashboardService';
+import { trackEvent } from '@/observability/metrics';
 
 type NavigationLink = {
   readonly label: string;
@@ -93,12 +95,26 @@ function AnalysisOverview() {
   const invalidate = useInvalidateDashboardSummary('analysis');
   const query = useDashboardSummaryQuery('analysis', { timeframe });
   const metrics = summary?.metrics ?? [];
+  const lastUpdateRef = useRef<number>(0);
 
   const handleTimeframeChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value as DashboardTimeframe;
     dispatch(setDashboardTimeframe({ scope: 'analysis', timeframe: value }));
     invalidate(value);
+    trackEvent('analysis.timeframe.changed', { timeframe: value });
   };
+
+  useEffect(() => {
+    if (!query.dataUpdatedAt || query.dataUpdatedAt === lastUpdateRef.current) {
+      return;
+    }
+
+    lastUpdateRef.current = query.dataUpdatedAt;
+    trackEvent('analysis.dashboard.updated', {
+      timeframe,
+      metrics: metrics.length,
+    });
+  }, [metrics.length, query.dataUpdatedAt, timeframe]);
 
   return (
     <article className="domain__section">
@@ -126,34 +142,73 @@ function AnalysisOverview() {
       </header>
 
       {status === 'failed' && error ? (
-        <div className="domain__alert domain__alert--error" role="alert">
-          {error}
-        </div>
+        <DomainState
+          variant="error"
+          title="Não foi possível carregar os indicadores."
+          description={error}
+          action={
+            <button
+              type="button"
+              className="domain__button domain__button--secondary"
+              onClick={() => query.refetch()}
+            >
+              Tentar novamente
+            </button>
+          }
+        />
       ) : null}
 
-      {query.isFetching ? (
-        <p className="domain__status">Recalculando métricas…</p>
+      {!summary && query.isLoading ? (
+        <DomainState
+          variant="loading"
+          title="Carregando indicadores"
+          description="Buscando métricas atualizadas para o período selecionado."
+        />
       ) : null}
 
       {summary ? (
-        <div className="domain__metrics">
-          {metrics.map((metric) => (
-            <div key={metric.id} className="domain__metric">
-              <dt className="domain__metric-title">{metric.label}</dt>
-              <dd className="domain__metric-value">
-                {metric.unit === 'percent'
-                  ? percentFormatter.format(metric.value / 100)
-                  : currencyFormatter.format(metric.value)}
-              </dd>
-              {metric.description ? (
-                <dd className="domain__metric-caption">{metric.description}</dd>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p>Nenhum indicador disponível para o período selecionado.</p>
-      )}
+        <>
+          {query.isFetching ? (
+            <DomainState
+              variant="loading"
+              layout="inline"
+              title="Atualizando indicadores em segundo plano…"
+            />
+          ) : null}
+          <div className="domain__metrics">
+            {metrics.map((metric) => (
+              <div key={metric.id} className="domain__metric">
+                <dt className="domain__metric-title">{metric.label}</dt>
+                <dd className="domain__metric-value">
+                  {metric.unit === 'percent'
+                    ? percentFormatter.format(metric.value / 100)
+                    : currencyFormatter.format(metric.value)}
+                </dd>
+                {metric.description ? (
+                  <dd className="domain__metric-caption">{metric.description}</dd>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {!summary && status !== 'failed' && !query.isLoading ? (
+        <DomainState
+          variant="empty"
+          title="Nenhum indicador disponível para o período."
+          description="Ajuste a janela de tempo ou recarregue para tentar novamente."
+          action={
+            <button
+              type="button"
+              className="domain__button"
+              onClick={() => query.refetch()}
+            >
+              Recarregar
+            </button>
+          }
+        />
+      ) : null}
     </article>
   );
 }
@@ -201,7 +256,11 @@ function AnalysisValuation() {
           </table>
         </div>
       ) : (
-        <p>Selecione um período na visão geral para carregar os dados.</p>
+        <DomainState
+          variant="empty"
+          title="Resumo ainda não disponível"
+          description="Selecione um período na visão geral para carregar os dados."
+        />
       )}
     </article>
   );
@@ -246,7 +305,11 @@ function AnalysisScenarios() {
           )}
         </ul>
       ) : (
-        <p>Não há simulações registradas para o período selecionado.</p>
+        <DomainState
+          variant="empty"
+          title="Simulações ainda não carregadas"
+          description="Não há simulações registradas para o período selecionado."
+        />
       )}
     </article>
   );

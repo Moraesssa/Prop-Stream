@@ -8,6 +8,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { store } from '@/store';
 
 import App from './App';
+import AppErrorBoundary from './app/AppErrorBoundary';
+import ToastProvider from './app/ToastProvider';
 
 describe('App', () => {
   it('renderiza o título principal', () => {
@@ -16,7 +18,11 @@ describe('App', () => {
       <Provider store={store}>
         <QueryClientProvider client={queryClient}>
           <MemoryRouter>
-            <App />
+            <ToastProvider>
+              <AppErrorBoundary>
+                <App />
+              </AppErrorBoundary>
+            </ToastProvider>
           </MemoryRouter>
         </QueryClientProvider>
       </Provider>,

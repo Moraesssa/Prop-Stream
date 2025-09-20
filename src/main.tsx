@@ -5,6 +5,8 @@ import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import App from '@/App';
+import AppErrorBoundary from '@/app/AppErrorBoundary';
+import ToastProvider from '@/app/ToastProvider';
 import { store } from '@/store';
 import { initializeAuthService } from '@/services/auth';
 import { resetUserState } from '@/store/user';
@@ -23,7 +25,11 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <App />
+          <ToastProvider>
+            <AppErrorBoundary>
+              <App />
+            </AppErrorBoundary>
+          </ToastProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </Provider>

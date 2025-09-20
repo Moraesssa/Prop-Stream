@@ -25,7 +25,7 @@ import type { RootState } from './index';
 
 export type RequestStatus = 'idle' | 'loading' | 'succeeded' | 'failed';
 
-type PipelineEntityState = EntityState<Opportunity>;
+type PipelineEntityState = EntityState<Opportunity, string>;
 
 export interface PipelineState extends PipelineEntityState {
   status: RequestStatus;
@@ -35,7 +35,7 @@ export interface PipelineState extends PipelineEntityState {
   optimisticIds: string[];
 }
 
-const pipelineAdapter = createEntityAdapter<Opportunity>({
+const pipelineAdapter = createEntityAdapter<Opportunity, string>({
   selectId: (opportunity) => opportunity.id,
   sortComparer: (a, b) =>
     new Date(b.updatedAt ?? b.createdAt).getTime() -
@@ -151,10 +151,18 @@ const pipelineSlice = createSlice({
     setLastUpdatedAt(state, action: PayloadAction<number | null>) {
       state.lastUpdatedAt = action.payload ?? null;
     },
-    upsertOpportunity: pipelineAdapter.upsertOne,
-    upsertMany: pipelineAdapter.upsertMany,
-    removeOpportunity: pipelineAdapter.removeOne,
-    setAll: pipelineAdapter.setAll,
+    upsertOpportunity(state, action: PayloadAction<Opportunity>) {
+      pipelineAdapter.upsertOne(state, action.payload);
+    },
+    upsertMany(state, action: PayloadAction<Opportunity[]>) {
+      pipelineAdapter.upsertMany(state, action.payload);
+    },
+    removeOpportunity(state, action: PayloadAction<string>) {
+      pipelineAdapter.removeOne(state, action.payload);
+    },
+    setAll(state, action: PayloadAction<Opportunity[]>) {
+      pipelineAdapter.setAll(state, action.payload);
+    },
     markOptimistic(state, action: PayloadAction<string>) {
       if (!state.optimisticIds.includes(action.payload)) {
         state.optimisticIds.push(action.payload);
@@ -268,8 +276,10 @@ const adapterSelectors = pipelineAdapter.getSelectors<RootState>(
   (state) => state.pipeline,
 );
 
-export const selectAllPipelineOpportunities = adapterSelectors.selectAll;
-export const selectPipelineEntities = adapterSelectors.selectEntities;
+export const selectAllPipelineOpportunities = (state: RootState) =>
+  adapterSelectors.selectAll(state);
+export const selectPipelineEntities = (state: RootState) =>
+  adapterSelectors.selectEntities(state);
 
 export const selectPipelineStatus = (state: RootState): RequestStatus =>
   selectPipelineState(state).status;
@@ -287,7 +297,7 @@ export const selectPipelineLastUpdatedAt = (state: RootState): number | null =>
 export const selectPipelineOptimisticIds = (state: RootState): string[] =>
   selectPipelineState(state).optimisticIds;
 
-export const selectPipelineByStage = createSelector(
+const selectPipelineByStageSelector = createSelector(
   [
     selectAllPipelineOpportunities,
     (_: RootState, stage?: string | null) => stage,
@@ -301,7 +311,12 @@ export const selectPipelineByStage = createSelector(
   },
 );
 
-export const selectPipelineTotals = createSelector(
+export const selectPipelineByStage = (
+  state: RootState,
+  stage?: string | null,
+) => selectPipelineByStageSelector(state, stage);
+
+const selectPipelineTotalsSelector = createSelector(
   [selectAllPipelineOpportunities],
   (opportunities) => {
     const totalValuation = opportunities.reduce((accumulator, opportunity) => {
@@ -328,12 +343,20 @@ export const selectPipelineTotals = createSelector(
   },
 );
 
-export const selectIsOpportunityOptimistic = createSelector(
+export const selectPipelineTotals = (state: RootState) =>
+  selectPipelineTotalsSelector(state);
+
+const selectIsOpportunityOptimisticSelector = createSelector(
   [
     selectPipelineOptimisticIds,
     (_: RootState, id: string | undefined) => id,
   ],
   (optimisticIds, id) => (id ? optimisticIds.includes(id) : false),
 );
+
+export const selectIsOpportunityOptimistic = (
+  state: RootState,
+  id: string | undefined,
+) => selectIsOpportunityOptimisticSelector(state, id);
 
 export type { Opportunity };

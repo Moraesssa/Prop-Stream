@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 
 import {
@@ -8,6 +8,8 @@ import {
   useUpdateOpportunityMutation,
 } from '@/hooks/useOpportunityQueries';
 import { useDashboardSummaryQuery } from '@/hooks/useDashboardQueries';
+import DomainState from '@/domains/components/DomainState';
+import { useToast } from '@/app/ToastProvider';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   selectAllPipelineOpportunities,
@@ -29,6 +31,7 @@ import {
   selectPipelineDefaultFilter,
   upsertSavedFilter,
 } from '@/store/user';
+import { trackEvent } from '@/observability/metrics';
 
 type NavigationLink = {
   readonly label: string;
@@ -95,11 +98,12 @@ function OriginationLayout() {
 
 function OriginationOverview() {
   const query = usePipelineQuery();
-  const status = useAppSelector(selectPipelineStatus);
-  const error = useAppSelector(selectPipelineError);
-  const totals = useAppSelector(selectPipelineTotals);
-  const opportunities = useAppSelector(selectAllPipelineOpportunities);
-  const lastUpdatedAt = useAppSelector(selectPipelineLastUpdatedAt);
+  const status = useAppSelector((state) => selectPipelineStatus(state));
+  const error = useAppSelector((state) => selectPipelineError(state));
+  const totals = useAppSelector((state) => selectPipelineTotals(state));
+  const opportunities = useAppSelector((state) => selectAllPipelineOpportunities(state));
+  const lastUpdatedAt = useAppSelector((state) => selectPipelineLastUpdatedAt(state));
+  const totalsSnapshotRef = useRef<string>('');
 
   const stageDistribution = useMemo(() => {
     const distribution = new Map<string, number>();
@@ -110,6 +114,25 @@ function OriginationOverview() {
 
     return Array.from(distribution.entries()).sort((a, b) => b[1] - a[1]);
   }, [opportunities]);
+
+  useEffect(() => {
+    const snapshot = JSON.stringify({
+      count: totals.totalCount,
+      valuation: totals.totalValuation,
+      probability: totals.averageProbability,
+    });
+
+    if (snapshot === totalsSnapshotRef.current) {
+      return;
+    }
+
+    totalsSnapshotRef.current = snapshot;
+    trackEvent('origination.pipeline.summary.updated', {
+      totalCount: totals.totalCount,
+      totalValuation: totals.totalValuation,
+      averageProbability: totals.averageProbability,
+    });
+  }, [totals.averageProbability, totals.totalCount, totals.totalValuation]);
 
   return (
     <article className="domain__section">
@@ -123,9 +146,20 @@ function OriginationOverview() {
       </header>
 
       {status === 'failed' && error ? (
-        <div className="domain__alert domain__alert--error" role="alert">
-          {error}
-        </div>
+        <DomainState
+          variant="error"
+          title="Não foi possível carregar o resumo do pipeline."
+          description={error}
+          action={
+            <button
+              type="button"
+              className="domain__button domain__button--secondary"
+              onClick={() => query.refetch()}
+            >
+              Tentar novamente
+            </button>
+          }
+        />
       ) : null}
 
       <div className="domain__metrics" aria-live="polite">
@@ -160,23 +194,29 @@ function OriginationOverview() {
         <header className="domain__panel-header">
           <h3>Distribuição por estágio</h3>
           {query.isFetching ? (
-            <span className="domain__panel-status" aria-live="polite">
-              Atualizando…
-            </span>
+            <DomainState
+              variant="loading"
+              layout="inline"
+              title="Atualizando…"
+            />
           ) : null}
         </header>
-        <ul className="domain__list domain__list--columns">
-          {stageDistribution.length === 0 ? (
-            <li>Nenhuma oportunidade cadastrada até o momento.</li>
-          ) : (
-            stageDistribution.map(([stage, count]) => (
+        {stageDistribution.length === 0 ? (
+          <DomainState
+            variant="empty"
+            title="Nenhuma oportunidade cadastrada."
+            description="Use o formulário do pipeline para adicionar novas oportunidades ao funil."
+          />
+        ) : (
+          <ul className="domain__list domain__list--columns">
+            {stageDistribution.map(([stage, count]) => (
               <li key={stage} className="domain__list-item">
                 <span className="domain__list-label">{stage}</span>
                 <span className="domain__list-value">{count}</span>
               </li>
-            ))
-          )}
-        </ul>
+            ))}
+          </ul>
+        )}
       </section>
     </article>
   );
@@ -184,6 +224,7 @@ function OriginationOverview() {
 
 function OriginationPipeline() {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const [stageFilter, setStageFilter] = useState<string>('');
   const [name, setName] = useState('');
   const [stage, setStage] = useState('Lead');
@@ -197,11 +238,17 @@ function OriginationPipeline() {
   const opportunities = useAppSelector((state) =>
     selectPipelineByStage(state, stageFilter || null),
   );
-  const allOpportunities = useAppSelector(selectAllPipelineOpportunities);
-  const optimisticIds = useAppSelector(selectPipelineOptimisticIds);
-  const error = useAppSelector(selectPipelineError);
-  const status = useAppSelector(selectPipelineStatus);
-  const defaultPipelineFilter = useAppSelector(selectPipelineDefaultFilter);
+  const allOpportunities = useAppSelector((state) =>
+    selectAllPipelineOpportunities(state),
+  );
+  const optimisticIds = useAppSelector((state) =>
+    selectPipelineOptimisticIds(state),
+  );
+  const error = useAppSelector((state) => selectPipelineError(state));
+  const status = useAppSelector((state) => selectPipelineStatus(state));
+  const defaultPipelineFilter = useAppSelector((state) =>
+    selectPipelineDefaultFilter(state),
+  );
 
   const stageOptions = useMemo(() => {
     const stages = new Set<string>();
@@ -242,6 +289,9 @@ function OriginationPipeline() {
 
   const handleStageFilterChange = (value: string) => {
     setStageFilter(value);
+    trackEvent('origination.pipeline.filter.changed', {
+      stage: value || 'all',
+    });
 
     if (!value) {
       if (defaultPipelineFilter?.id) {
@@ -270,28 +320,62 @@ function OriginationPipeline() {
 
     const payload = {
       name: name.trim(),
-      stage: stage || stageOptions[0] ?? 'Lead',
+      stage: stage || (stageOptions[0] ?? 'Lead'),
       valuation: valuation ? Number(valuation) : undefined,
       probability: probability ? Number(probability) : undefined,
     };
 
     createOpportunity.mutate(payload, {
-      onSuccess: () => {
+      onSuccess: (opportunity) => {
         setName('');
         setStage(stageOptions[0] ?? '');
         setValuation('');
         setProbability('40');
+        showToast({
+          tone: 'success',
+          title: 'Oportunidade criada',
+          description: `${opportunity.name} adicionada ao pipeline.`,
+        });
+        trackEvent('origination.pipeline.opportunity.created', {
+          stage: opportunity.stage,
+        });
       },
     });
   };
 
   const handleIncreaseProbability = (id: string, current: number | undefined) => {
     const next = Math.min(100, (current ?? 0) + 10);
-    updateOpportunity.mutate({ id, payload: { probability: next } });
+    updateOpportunity.mutate(
+      { id, payload: { probability: next } },
+      {
+        onSuccess: (opportunity) => {
+          showToast({
+            tone: 'success',
+            title: 'Probabilidade atualizada',
+            description: `${opportunity.name} agora está com ${
+              opportunity.probability ?? next
+            }% de chance.`,
+          });
+          trackEvent('origination.pipeline.opportunity.updated', {
+            id: opportunity.id,
+            probability: opportunity.probability ?? next,
+          });
+        },
+      },
+    );
   };
 
   const handleDelete = (id: string) => {
-    deleteOpportunity.mutate(id);
+    deleteOpportunity.mutate(id, {
+      onSuccess: () => {
+        showToast({
+          tone: 'warning',
+          title: 'Oportunidade removida',
+          description: 'A oportunidade foi retirada do funil.',
+        });
+        trackEvent('origination.pipeline.opportunity.deleted', { id });
+      },
+    });
   };
 
   return (
@@ -327,9 +411,20 @@ function OriginationPipeline() {
       </header>
 
       {error && status === 'failed' ? (
-        <div className="domain__alert domain__alert--error" role="alert">
-          {error}
-        </div>
+        <DomainState
+          variant="error"
+          title="Não foi possível carregar o pipeline."
+          description={error}
+          action={
+            <button
+              type="button"
+              className="domain__button domain__button--secondary"
+              onClick={() => query.refetch()}
+            >
+              Recarregar
+            </button>
+          }
+        />
       ) : null}
 
       <form className="domain__form" onSubmit={handleSubmit}>
@@ -423,12 +518,38 @@ function OriginationPipeline() {
           <tbody>
             {query.isLoading && opportunities.length === 0 ? (
               <tr>
-                <td colSpan={6}>Carregando pipeline…</td>
+                <td colSpan={6}>
+                  <DomainState
+                    variant="loading"
+                    title="Carregando pipeline"
+                    description="Sincronizando oportunidades do funil."
+                  />
+                </td>
               </tr>
             ) : null}
             {opportunities.length === 0 && !query.isLoading ? (
               <tr>
-                <td colSpan={6}>Nenhuma oportunidade encontrada.</td>
+                <td colSpan={6}>
+                  <DomainState
+                    variant="empty"
+                    title="Nenhuma oportunidade encontrada"
+                    description={
+                      stageFilter
+                        ? 'Ajuste os filtros para visualizar mais resultados.'
+                        : 'Inclua uma nova oportunidade para iniciar o funil.'
+                    }
+                    action={
+                      <button
+                        type="button"
+                        className="domain__button"
+                        onClick={() => query.refetch()}
+                        disabled={query.isFetching}
+                      >
+                        Recarregar
+                      </button>
+                    }
+                  />
+                </td>
               </tr>
             ) : null}
             {opportunities.map((opportunity) => {
@@ -492,7 +613,9 @@ function OriginationPipeline() {
 }
 
 function OriginationReports() {
-  const activePortfolioId = useAppSelector(selectActivePortfolioId);
+  const activePortfolioId = useAppSelector((state) =>
+    selectActivePortfolioId(state),
+  );
   const query = useDashboardSummaryQuery('origination', {
     filters: activePortfolioId ? { portfolioId: activePortfolioId } : undefined,
   });
@@ -521,13 +644,28 @@ function OriginationReports() {
       </header>
 
       {status === 'failed' && error ? (
-        <div className="domain__alert domain__alert--error" role="alert">
-          {error}
-        </div>
+        <DomainState
+          variant="error"
+          title="Não foi possível carregar os relatórios."
+          description={error}
+          action={
+            <button
+              type="button"
+              className="domain__button domain__button--secondary"
+              onClick={() => query.refetch()}
+            >
+              Tentar novamente
+            </button>
+          }
+        />
       ) : null}
 
       {query.isFetching ? (
-        <p className="domain__status">Sincronizando indicadores…</p>
+        <DomainState
+          variant="loading"
+          layout="inline"
+          title="Sincronizando indicadores…"
+        />
       ) : null}
 
       {summary ? (
@@ -601,7 +739,21 @@ function OriginationReports() {
           </section>
         </div>
       ) : (
-        <p>Nenhum relatório disponível até o momento.</p>
+        <DomainState
+          variant="empty"
+          title="Nenhum relatório disponível"
+          description="Aguarde a sincronização dos dados ou ajuste o portfólio selecionado."
+          action={
+            <button
+              type="button"
+              className="domain__button"
+              onClick={() => query.refetch()}
+              disabled={query.isFetching}
+            >
+              Recarregar
+            </button>
+          }
+        />
       )}
     </article>
   );

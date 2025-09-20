@@ -57,37 +57,36 @@ function normalizePreferences(preferences: Partial<UserPreferences> | UserPrefer
   }
 
   const normalizedFilters = Array.isArray(preferences.savedFilters)
-    ? preferences.savedFilters
-        .map((filter) => ({
-          ...filter,
+    ? preferences.savedFilters.flatMap((filter) => {
+        if (
+          !filter ||
+          typeof filter !== 'object' ||
+          typeof filter.id !== 'string' ||
+          typeof filter.scope !== 'string' ||
+          typeof filter.label !== 'string'
+        ) {
+          return [];
+        }
+
+        const criteria =
+          filter.criteria &&
+          typeof filter.criteria === 'object' &&
+          !Array.isArray(filter.criteria)
+            ? { ...filter.criteria }
+            : {};
+
+        const normalized: UserSavedFilter = {
           id: filter.id,
           label: filter.label,
           scope: filter.scope,
-          criteria: filter.criteria,
-          isDefault: filter.isDefault,
-          createdAt: filter.createdAt,
-          updatedAt: filter.updatedAt,
-        }))
-        .filter(
-          (filter): filter is UserSavedFilter =>
-            Boolean(
-              filter &&
-                typeof filter.id === 'string' &&
-                typeof filter.scope === 'string' &&
-                typeof filter.label === 'string',
-            ),
-        )
-        .map((filter) => ({
-          ...filter,
-          criteria:
-            filter.criteria && typeof filter.criteria === 'object' && !Array.isArray(filter.criteria)
-              ? { ...filter.criteria }
-              : {},
+          criteria,
           isDefault: Boolean(filter.isDefault),
           createdAt: filter.createdAt,
           updatedAt: filter.updatedAt,
-        }))
-        .map(normalizeSavedFilter)
+        };
+
+        return [normalizeSavedFilter(normalized)];
+      })
     : [];
 
   return {

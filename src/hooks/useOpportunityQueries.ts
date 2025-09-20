@@ -118,7 +118,7 @@ function getExistingOpportunity(
 
 export function usePipelineQuery(filters?: OpportunityFilters) {
   const dispatch = useAppDispatch();
-  const storedFilters = useAppSelector(selectPipelineFilters);
+  const storedFilters = useAppSelector((state) => selectPipelineFilters(state));
   const activeFilters = filters ?? storedFilters ?? null;
   const queryKey = getPipelineQueryKey(activeFilters);
 
@@ -128,33 +128,51 @@ export function usePipelineQuery(filters?: OpportunityFilters) {
     }
   }, [dispatch, filters]);
 
-  return useQuery({
+  const query = useQuery<Opportunity[], unknown, Opportunity[], PipelineQueryKey>({
     queryKey,
-    queryFn: async () => {
+    queryFn: async (): Promise<Opportunity[]> => {
       dispatch(setPipelineStatus('loading'));
       const result = await listOpportunities(activeFilters ?? undefined);
       assertSuccess(result);
       return result.data;
     },
     staleTime: 30_000,
-    onSuccess: (data) => {
-      dispatch(replacePipeline(data));
-      dispatch(setPipelineStatus('succeeded'));
-      dispatch(setPipelineError(null));
-      dispatch(setPipelineLastUpdatedAt(Date.now()));
-      if (filters === undefined) {
-        dispatch(setPipelineFilters(activeFilters));
-      }
-    },
-    onError: (error) => {
-      dispatch(setPipelineStatus('failed'));
-      dispatch(
-        setPipelineError(
-          getErrorMessage(error, 'Não foi possível carregar o pipeline.'),
-        ),
-      );
-    },
   });
+
+  useEffect(() => {
+    if (!query.isSuccess || !query.data) {
+      return;
+    }
+
+    dispatch(replacePipeline(query.data));
+    dispatch(setPipelineStatus('succeeded'));
+    dispatch(setPipelineError(null));
+    dispatch(setPipelineLastUpdatedAt(Date.now()));
+    if (filters === undefined) {
+      dispatch(setPipelineFilters(activeFilters));
+    }
+  }, [
+    activeFilters,
+    dispatch,
+    filters,
+    query.data,
+    query.isSuccess,
+  ]);
+
+  useEffect(() => {
+    if (!query.isError) {
+      return;
+    }
+
+    dispatch(setPipelineStatus('failed'));
+    dispatch(
+      setPipelineError(
+        getErrorMessage(query.error, 'Não foi possível carregar o pipeline.'),
+      ),
+    );
+  }, [dispatch, query.error, query.isError]);
+
+  return query;
 }
 
 export function useCreateOpportunityMutation() {

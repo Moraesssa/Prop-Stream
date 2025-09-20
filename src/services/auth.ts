@@ -1,10 +1,13 @@
 import httpClient, {
   type HttpClientError,
+  type HttpRequestConfig,
   normalizeHttpError,
   setAccessTokenProvider,
   setRefreshTokenHandler,
   setUnauthorizedHandler,
 } from './httpClient';
+
+import { trackError, trackEvent } from '@/observability/metrics';
 
 import type {
   AuthSession,
@@ -29,6 +32,8 @@ const textDecoder = typeof TextDecoder !== 'undefined' ? new TextDecoder() : nul
 let inMemoryTokens: AuthTokens | null = null;
 let cachedTokensPromise: Promise<AuthTokens | null> | null = null;
 let cryptoKeyPromise: Promise<CryptoKey | null> | null = null;
+
+const SKIP_AUTH_CONFIG: HttpRequestConfig = { skipAuth: true };
 
 const tokenListeners = new Set<(tokens: AuthTokens | null) => void>();
 
@@ -196,7 +201,11 @@ async function obtainCryptoKey(): Promise<CryptoKey | null> {
     if (stored) {
       try {
         const rawKey = decodeFromBase64(stored);
-        return await crypto.subtle.importKey('raw', rawKey, 'AES-GCM', true, [
+        const keyData = rawKey.buffer.slice(
+          rawKey.byteOffset,
+          rawKey.byteOffset + rawKey.byteLength,
+        ) as ArrayBuffer;
+        return await crypto.subtle.importKey('raw', keyData, 'AES-GCM', true, [
           'encrypt',
           'decrypt',
         ]);
@@ -280,10 +289,18 @@ async function decodeTokens(raw: string): Promise<AuthTokens | null> {
 
       const ivBytes = decodeFromBase64(parsed.iv);
       const dataBytes = decodeFromBase64(parsed.data);
+      const ivBuffer = ivBytes.buffer.slice(
+        ivBytes.byteOffset,
+        ivBytes.byteOffset + ivBytes.byteLength,
+      ) as ArrayBuffer;
+      const dataBuffer = dataBytes.buffer.slice(
+        dataBytes.byteOffset,
+        dataBytes.byteOffset + dataBytes.byteLength,
+      ) as ArrayBuffer;
       const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: ivBytes },
+        { name: 'AES-GCM', iv: ivBuffer },
         key,
-        dataBytes,
+        dataBuffer,
       );
       const text = textDecoder.decode(decrypted);
       return JSON.parse(text) as AuthTokens;
@@ -422,6 +439,9 @@ async function resolveAccessToken(): Promise<string | null> {
       return refreshed?.accessToken ?? null;
     } catch (error) {
       console.warn('auth: automatic refresh failed', error);
+      trackError('auth.token.autoRefresh.error', error, {
+        reason: 'token-expired',
+      });
       await clearStoredTokens();
       return null;
     }
@@ -435,11 +455,15 @@ export async function login(credentials: LoginCredentials): Promise<AuthSession>
     const response = await httpClient.post<LoginResponse>(
       '/auth/login',
       credentials,
-      { skipAuth: true },
+      SKIP_AUTH_CONFIG,
     );
 
     const normalizedTokens = normalizeTokens(response.data.tokens);
     await persistTokens(normalizedTokens);
+    trackEvent('auth.login.success', {
+      userId: response.data.profile?.id,
+      permissions: response.data.permissions?.length ?? 0,
+    });
 
     return {
       profile: response.data.profile,
@@ -448,24 +472,38 @@ export async function login(credentials: LoginCredentials): Promise<AuthSession>
       tokens: normalizedTokens,
     };
   } catch (error) {
-    throw normalizeHttpError(error);
+    const normalized = normalizeHttpError(error);
+    trackError('auth.login.error', normalized, {
+      email: credentials.email,
+      status: normalized.status,
+    });
+    throw normalized;
   }
 }
 
 export async function logout(): Promise<void> {
+  let success = false;
   try {
     await httpClient.post<LogoutResponse>(
       '/auth/logout',
       undefined,
-      { skipAuth: true },
+      SKIP_AUTH_CONFIG,
     );
+    success = true;
   } catch (error) {
     const normalized = normalizeHttpError(error);
+    trackError('auth.logout.error', normalized, {
+      status: normalized.status,
+    });
     if (!normalized.status || normalized.status < 500) {
       throw normalized;
     }
   } finally {
     await clearStoredTokens();
+  }
+
+  if (success) {
+    trackEvent('auth.logout.success');
   }
 }
 
@@ -479,14 +517,22 @@ export async function refreshTokens(): Promise<AuthTokens | null> {
     const response = await httpClient.post<RefreshResponse>(
       '/auth/refresh',
       { refreshToken: current.refreshToken },
-      { skipAuth: true },
+      SKIP_AUTH_CONFIG,
     );
 
     const normalized = normalizeTokens(response.data.tokens, current);
     await persistTokens(normalized);
+    trackEvent('auth.token.refresh.success', {
+      expiresAt: normalized.expiresAt,
+      refreshExpiresAt: normalized.refreshExpiresAt,
+    });
     return normalized;
   } catch (error) {
-    throw normalizeHttpError(error);
+    const normalized = normalizeHttpError(error);
+    trackError('auth.token.refresh.error', normalized, {
+      status: normalized.status,
+    });
+    throw normalized;
   }
 }
 
@@ -516,14 +562,23 @@ export function initializeAuthService(options?: InitializeAuthOptions) {
       console.warn('auth: refresh handler failed', refreshError);
       if (refreshError) {
         const normalized = normalizeHttpError(refreshError);
+        trackEvent('auth.token.refresh.failed', {
+          status: normalized.status,
+        });
         if (normalized.status === 401) {
           await clearStoredTokens();
         }
+      }
+      if (!refreshError) {
+        trackEvent('auth.token.refresh.failed');
       }
       return null;
     }
   });
   setUnauthorizedHandler(async (error) => {
+    trackEvent('auth.session.terminated', {
+      status: error.status,
+    });
     await clearStoredTokens();
     options?.onUnauthorized?.(error);
   });
