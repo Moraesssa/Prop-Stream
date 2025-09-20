@@ -259,7 +259,7 @@ export default function AnalysisDomain() {
         <Route index element={<AnalysisOverview />} />
         <Route path="modelagem" element={<AnalysisValuation />} />
         <Route path="cenarios" element={<AnalysisScenarios />} />
-        <Route path="*" element={<Navigate to="." replace />} />
+        <Route path="*" element={<Navigate to=".." replace />} />
       </Route>
     </Routes>
   );
