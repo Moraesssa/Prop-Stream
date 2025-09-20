@@ -6,6 +6,11 @@ import {
   selectActivePortfolioId,
   setActivePortfolioId,
 } from '@/store/portfolioSlice';
+import {
+  selectUserFixedWidgets,
+  selectUserProfile,
+  toggleFixedWidget,
+} from '@/store/user';
 
 const DOMAINS = [
   { label: 'Originação de Negócios', path: '/origination' },
@@ -18,6 +23,12 @@ const PORTFOLIO_OPTIONS = [
   { label: 'Fundo Tático FIIs', value: 'fiis-tatico' },
   { label: 'Residencial Premium', value: 'residencial-premium' },
   { label: 'Logística Norte', value: 'logistica-norte' },
+] as const;
+
+const AVAILABLE_WIDGETS = [
+  { id: 'origination:pipeline', label: 'Pipeline de Originação' },
+  { id: 'analysis:valuation', label: 'Painel de Valuation' },
+  { id: 'portfolio:map', label: 'Mapa do Portfólio' },
 ] as const;
 
 const PORTFOLIO_STORAGE_KEY = 'prop-stream:selected-portfolio';
@@ -34,6 +45,8 @@ export function AppShell() {
   const portfolioLabelId = useId();
   const dispatch = useAppDispatch();
   const selectedPortfolio = useAppSelector(selectActivePortfolioId);
+  const userProfile = useAppSelector(selectUserProfile);
+  const fixedWidgets = useAppSelector(selectUserFixedWidgets);
   const [isPortfolioInitialized, setPortfolioInitialized] = useState(false);
 
   useEffect(() => {
@@ -84,10 +97,19 @@ export function AppShell() {
     isPortfolioInitialized,
     selectedPortfolio,
   ]);
+
+  const handleToggleWidget = (widgetId: string) => {
+    dispatch(toggleFixedWidget(widgetId));
+  };
   return (
     <div className="app-shell">
       <header className="app-shell__header">
-        <div className="app-shell__brand">Prop-Stream</div>
+        <div className="app-shell__brand">
+          <span>Prop-Stream</span>
+          {userProfile ? (
+            <span className="app-shell__brand-user">Olá, {userProfile.name}</span>
+          ) : null}
+        </div>
         <nav className="app-shell__nav" aria-label="Navegação principal">
           <ul
             className="app-shell__nav-list"
@@ -133,6 +155,28 @@ export function AppShell() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="app-shell__widgets">
+            <span className="app-shell__widgets-label">Widgets fixos</span>
+            <div className="app-shell__widgets-controls" role="group" aria-label="Widgets fixos">
+              {AVAILABLE_WIDGETS.map((widget) => {
+                const isPinned = fixedWidgets.includes(widget.id);
+                return (
+                  <button
+                    key={widget.id}
+                    type="button"
+                    className={`app-shell__widget-toggle${
+                      isPinned ? ' app-shell__widget-toggle--active' : ''
+                    }`}
+                    aria-pressed={isPinned}
+                    onClick={() => handleToggleWidget(widget.id)}
+                  >
+                    <span aria-hidden="true">{isPinned ? '📌' : '📍'}</span>
+                    <span>{widget.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <button
             type="button"

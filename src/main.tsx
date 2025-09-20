@@ -6,9 +6,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import App from '@/App';
 import { store } from '@/store';
+import { initializeAuthService } from '@/services/auth';
+import { resetUserState } from '@/store/user';
 import '@/index.css';
 
 const queryClient = new QueryClient();
+
+initializeAuthService({
+  onUnauthorized: () => {
+    store.dispatch(resetUserState());
+  },
+});
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

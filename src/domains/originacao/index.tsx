@@ -8,7 +8,7 @@ import {
   useUpdateOpportunityMutation,
 } from '@/hooks/useOpportunityQueries';
 import { useDashboardSummaryQuery } from '@/hooks/useDashboardQueries';
-import { useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   selectAllPipelineOpportunities,
   selectPipelineByStage,
@@ -24,6 +24,11 @@ import {
   selectDashboardSummary,
 } from '@/store/dashboardsSlice';
 import { selectActivePortfolioId } from '@/store/portfolioSlice';
+import {
+  removeSavedFilter,
+  selectPipelineDefaultFilter,
+  upsertSavedFilter,
+} from '@/store/user';
 
 type NavigationLink = {
   readonly label: string;
@@ -178,6 +183,7 @@ function OriginationOverview() {
 }
 
 function OriginationPipeline() {
+  const dispatch = useAppDispatch();
   const [stageFilter, setStageFilter] = useState<string>('');
   const [name, setName] = useState('');
   const [stage, setStage] = useState('Lead');
@@ -195,6 +201,7 @@ function OriginationPipeline() {
   const optimisticIds = useAppSelector(selectPipelineOptimisticIds);
   const error = useAppSelector(selectPipelineError);
   const status = useAppSelector(selectPipelineStatus);
+  const defaultPipelineFilter = useAppSelector(selectPipelineDefaultFilter);
 
   const stageOptions = useMemo(() => {
     const stages = new Set<string>();
@@ -217,6 +224,43 @@ function OriginationPipeline() {
       setStage(stageOptions[0]);
     }
   }, [stage, stageOptions]);
+
+  useEffect(() => {
+    const preferredStage =
+      typeof defaultPipelineFilter?.criteria?.stage === 'string'
+        ? (defaultPipelineFilter.criteria.stage as string)
+        : '';
+
+    setStageFilter((current) => {
+      if (current === preferredStage) {
+        return current;
+      }
+
+      return preferredStage;
+    });
+  }, [defaultPipelineFilter]);
+
+  const handleStageFilterChange = (value: string) => {
+    setStageFilter(value);
+
+    if (!value) {
+      if (defaultPipelineFilter?.id) {
+        dispatch(removeSavedFilter({ id: defaultPipelineFilter.id }));
+      }
+      return;
+    }
+
+    dispatch(
+      upsertSavedFilter({
+        id: defaultPipelineFilter?.id ?? 'pipeline-default-filter',
+        label: defaultPipelineFilter?.label ?? 'Filtro preferido do pipeline',
+        scope: 'pipeline',
+        isDefault: true,
+        criteria: { stage: value },
+        createdAt: defaultPipelineFilter?.createdAt,
+      }),
+    );
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -262,12 +306,12 @@ function OriginationPipeline() {
             id="stage-filter"
             className="domain__toolbar-select"
             value={stageFilter}
-            onChange={(event) => setStageFilter(event.target.value)}
+            onChange={(event) => handleStageFilterChange(event.target.value)}
           >
             <option value="">Todos</option>
-            {stageOptions.map((stage) => (
-              <option key={stage} value={stage}>
-                {stage}
+            {stageOptions.map((stageOption) => (
+              <option key={stageOption} value={stageOption}>
+                {stageOption}
               </option>
             ))}
           </select>
