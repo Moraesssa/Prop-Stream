@@ -1,12 +1,11 @@
-import { PropsWithChildren, useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { NavLink, Outlet } from 'react-router-dom';
 import './AppShell.css';
 
-export type AppShellProps = PropsWithChildren;
-
 const DOMAINS = [
-  { label: 'Originação de Negócios', path: '/originacao' },
-  { label: 'Análise e Valuation', path: '/analise' },
-  { label: 'Gestão de Portfólio', path: '/gestao' },
+  { label: 'Originação de Negócios', path: '/origination' },
+  { label: 'Análise e Valuation', path: '/analysis' },
+  { label: 'Gestão de Portfólio', path: '/portfolio' },
 ] as const;
 
 const PORTFOLIO_OPTIONS = [
@@ -18,7 +17,7 @@ const PORTFOLIO_OPTIONS = [
 
 const PORTFOLIO_STORAGE_KEY = 'prop-stream:selected-portfolio';
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell() {
   const [isOpen, setIsOpen] = useState(false);
   const alertsTitleId = useId();
   const portfolioLabelId = useId();
@@ -43,10 +42,6 @@ export function AppShell({ children }: AppShellProps) {
       selectedPortfolio
     );
   }, [selectedPortfolio]);
-
-  const currentPath =
-    typeof window !== 'undefined' ? window.location.pathname : '/';
-
   return (
     <div className="app-shell">
       <header className="app-shell__header">
@@ -57,30 +52,21 @@ export function AppShell({ children }: AppShellProps) {
             role="menubar"
             aria-orientation="horizontal"
           >
-            {DOMAINS.map((domain) => {
-              const isActive =
-                currentPath === domain.path ||
-                currentPath.startsWith(`${domain.path}/`);
-
-              return (
-                <li
-                  key={domain.path}
-                  role="none"
-                  className="app-shell__nav-item"
-                >
-                  <a
-                    href={domain.path}
-                    role="menuitem"
-                    className={`app-shell__nav-link${
+            {DOMAINS.map((domain) => (
+              <li key={domain.path} role="none" className="app-shell__nav-item">
+                <NavLink
+                  to={domain.path}
+                  role="menuitem"
+                  className={({ isActive }) =>
+                    `app-shell__nav-link${
                       isActive ? ' app-shell__nav-link--active' : ''
-                    }`}
-                    aria-current={isActive ? 'page' : undefined}
-                  >
-                    {domain.label}
-                  </a>
-                </li>
-              );
-            })}
+                    }`
+                  }
+                >
+                  {domain.label}
+                </NavLink>
+              </li>
+            ))}
           </ul>
         </nav>
         <div className="app-shell__controls">
@@ -123,7 +109,7 @@ export function AppShell({ children }: AppShellProps) {
         }`}
       >
         <main className="app-shell__main" role="main">
-          {children}
+          <Outlet />
         </main>
 
         <aside
