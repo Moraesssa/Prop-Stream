@@ -1,6 +1,6 @@
 # Prop-Stream
 
-![Capa da Prop-Stream](./public/prop-stream-cover.png)
+![Capa da Prop-Stream](./profile/prop-stream-cover.png)
 
 
 > Cockpit inteligente para originação, análise e gestão de investimentos imobiliários.
