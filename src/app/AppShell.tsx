@@ -21,6 +21,12 @@ const PORTFOLIO_OPTIONS = [
 ] as const;
 
 const PORTFOLIO_STORAGE_KEY = 'prop-stream:selected-portfolio';
+const defaultPortfolioId = PORTFOLIO_OPTIONS[0]?.value;
+
+const isValidPortfolioId = (
+  value: string | null | undefined,
+): value is string =>
+  Boolean(value && PORTFOLIO_OPTIONS.some((option) => option.value === value));
 
 export function AppShell() {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,23 +43,47 @@ export function AppShell() {
 
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem(PORTFOLIO_STORAGE_KEY);
-      if (stored) {
-        dispatch(setActivePortfolioId(stored));
-      } else if (!selectedPortfolio && PORTFOLIO_OPTIONS[0]) {
-        dispatch(setActivePortfolioId(PORTFOLIO_OPTIONS[0].value));
+      const validStored = isValidPortfolioId(stored) ? stored : undefined;
+      const validSelected = isValidPortfolioId(selectedPortfolio)
+        ? selectedPortfolio
+        : undefined;
+      const nextPortfolio = validStored ?? validSelected ?? defaultPortfolioId;
+
+      if (nextPortfolio && nextPortfolio !== selectedPortfolio) {
+        dispatch(setActivePortfolioId(nextPortfolio));
       }
     }
 
     setPortfolioInitialized(true);
-  }, [dispatch, isPortfolioInitialized, selectedPortfolio]);
+  }, [
+    defaultPortfolioId,
+    dispatch,
+    isPortfolioInitialized,
+    selectedPortfolio,
+  ]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !selectedPortfolio) {
+    if (typeof window === 'undefined' || !isPortfolioInitialized) {
       return;
     }
 
-    window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, selectedPortfolio);
-  }, [selectedPortfolio]);
+    if (isValidPortfolioId(selectedPortfolio)) {
+      window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, selectedPortfolio);
+      return;
+    }
+
+    if (defaultPortfolioId) {
+      dispatch(setActivePortfolioId(defaultPortfolioId));
+      return;
+    }
+
+    window.localStorage.removeItem(PORTFOLIO_STORAGE_KEY);
+  }, [
+    defaultPortfolioId,
+    dispatch,
+    isPortfolioInitialized,
+    selectedPortfolio,
+  ]);
   return (
     <div className="app-shell">
       <header className="app-shell__header">
@@ -89,14 +119,14 @@ export function AppShell() {
             >
               Portfólio ativo
             </label>
-          <select
-            id={portfolioLabelId}
-            className="app-shell__portfolio-select"
-            value={selectedPortfolio}
-            onChange={(event) =>
-              dispatch(setActivePortfolioId(event.target.value))
-            }
-          >
+            <select
+              id={portfolioLabelId}
+              className="app-shell__portfolio-select"
+              value={selectedPortfolio}
+              onChange={(event) =>
+                dispatch(setActivePortfolioId(event.target.value))
+              }
+            >
               {PORTFOLIO_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
