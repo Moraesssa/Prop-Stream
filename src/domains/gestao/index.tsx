@@ -1,4 +1,4 @@
-import { NavLink, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 
 import { usePortfolioSnapshotQuery } from '@/hooks/usePortfolioQueries';
 import { useAppSelector } from '@/store/hooks';
@@ -227,6 +227,7 @@ export default function PortfolioDomain() {
         <Route index element={<PortfolioOverview />} />
         <Route path="distribuicao" element={<PortfolioDistribution />} />
         <Route path="indicadores" element={<PortfolioIndicators />} />
+        <Route path="*" element={<Navigate to="." replace />} />
       </Route>
     </Routes>
   );

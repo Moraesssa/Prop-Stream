@@ -1,5 +1,5 @@
 import { ChangeEvent } from 'react';
-import { NavLink, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 
 import {
   useDashboardSummaryQuery,
@@ -259,6 +259,7 @@ export default function AnalysisDomain() {
         <Route index element={<AnalysisOverview />} />
         <Route path="modelagem" element={<AnalysisValuation />} />
         <Route path="cenarios" element={<AnalysisScenarios />} />
+        <Route path="*" element={<Navigate to="." replace />} />
       </Route>
     </Routes>
   );

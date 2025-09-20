@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { NavLink, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 
 import {
   useCreateOpportunityMutation,
@@ -570,6 +570,7 @@ export default function OriginationDomain() {
         <Route index element={<OriginationOverview />} />
         <Route path="pipeline" element={<OriginationPipeline />} />
         <Route path="relatorios" element={<OriginationReports />} />
+        <Route path="*" element={<Navigate to="." replace />} />
       </Route>
     </Routes>
   );
