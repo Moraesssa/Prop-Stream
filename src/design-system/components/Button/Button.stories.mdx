@@ -1,0 +1,54 @@
+import { Meta, Title, Subtitle, Description, Canvas, Story, ArgsTable } from '@storybook/blocks';
+import { Button } from './Button';
+
+<Meta title="Design System/Button" component={Button} />
+
+<Title>Button</Title>
+<Subtitle>Ações chamativas com estilo sólido, contornado ou ghost.</Subtitle>
+<Description>
+  Utilize botões para disparar ações principais ou secundárias. Prefira o variant "solid" para fluxos primários
+  e o "outline" quando existir competição visual. O variant "ghost" é indicado para ações neutras ou com menor
+  hierarquia.
+</Description>
+
+## Exemplos rápidos
+<Canvas>
+  <Story name="Variantes" args={{ children: 'Salvar alterações' }}>
+    {({ args }) => (
+      <div style={{ display: 'flex', gap: 'var(--ds-spacing-3)', flexWrap: 'wrap' }}>
+        <Button {...args} variant="solid" tone="primary" />
+        <Button {...args} variant="outline" tone="primary" />
+        <Button {...args} variant="ghost" tone="primary" />
+      </div>
+    )}
+  </Story>
+</Canvas>
+
+## Estados suportados
+<Canvas>
+  <Story name="Loading e Disabled" args={{ children: 'Processando' }}>
+    {({ args }) => (
+      <div style={{ display: 'flex', gap: 'var(--ds-spacing-3)', flexWrap: 'wrap' }}>
+        <Button {...args} loading />
+        <Button {...args} disabled>Desativado</Button>
+        <Button {...args} tone="danger">Erro crítico</Button>
+      </div>
+    )}
+  </Story>
+</Canvas>
+
+## Tamanhos
+<Canvas>
+  <Story name="Sizes" args={{ children: 'Continuar' }}>
+    {({ args }) => (
+      <div style={{ display: 'flex', gap: 'var(--ds-spacing-3)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <Button {...args} size="sm">Pequeno</Button>
+        <Button {...args} size="md">Médio</Button>
+        <Button {...args} size="lg">Grande</Button>
+      </div>
+    )}
+  </Story>
+</Canvas>
+
+## Props disponíveis
+<ArgsTable of={Button} />

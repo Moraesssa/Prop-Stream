@@ -1,0 +1,24 @@
+import { Meta, Title, Subtitle, Description } from '@storybook/blocks';
+import { lightTokens, darkTokens } from '../index';
+import { ColorsTokenGrid, TypographyTokenGrid, SpacingTokenGrid } from './TokenGrid';
+
+<Meta title="Design System/Tokens" />
+
+<Title>Tokens de estilo</Title>
+<Subtitle>Guia rápido de cores, tipografia e espaçamentos inspirados no Tailwind.</Subtitle>
+<Description>
+  Os tokens são expostos como variáveis CSS e objetos JavaScript. Utilize-os para manter consistência visual
+  e simplificar a adoção de tema claro/escuro.
+</Description>
+
+## Paleta de cores clara
+<ColorsTokenGrid theme="light" />
+
+## Paleta de cores escura
+<ColorsTokenGrid theme="dark" />
+
+## Tipografia
+<TypographyTokenGrid tokens={lightTokens} />
+
+## Espaçamentos
+<SpacingTokenGrid tokens={lightTokens} />

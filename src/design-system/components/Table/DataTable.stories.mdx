@@ -1,0 +1,45 @@
+import { Meta, Title, Subtitle, Description, Canvas, Story, ArgsTable } from '@storybook/blocks';
+import { DataTable } from './DataTable';
+
+const sampleColumns = [
+  { key: 'name', header: 'Nome' },
+  { key: 'status', header: 'Status', align: 'center' },
+  { key: 'leads', header: 'Leads', align: 'right' }
+];
+
+const sampleRows = [
+  { id: 1, name: 'Campanha A', status: 'Ativa', leads: 120 },
+  { id: 2, name: 'Campanha B', status: 'Pausada', leads: 45 },
+  { id: 3, name: 'Campanha C', status: 'Rascunho', leads: 0 }
+];
+
+<Meta title="Design System/Data Table" component={DataTable} />
+
+<Title>DataTable</Title>
+<Subtitle>Tabelas responsivas com mensagens para estados especiais.</Subtitle>
+<Description>
+  Use a tabela para coleções com até algumas dezenas de linhas. Ative o callback <code>onRowClick</code> para ações
+  rápidas e utilize mensagens customizadas nos estados de carregamento, vazia ou erro para guiar o usuário.
+</Description>
+
+## Tabela padrão
+<Canvas>
+  <Story name="Default">
+    <DataTable columns={sampleColumns} rows={sampleRows} caption="Desempenho das campanhas" />
+  </Story>
+</Canvas>
+
+## Estados principais
+<Canvas>
+  <Story name="Loading, Empty, Error e Disabled">
+    <div style={{ display: 'grid', gap: 'var(--ds-spacing-5)' }}>
+      <DataTable columns={sampleColumns} rows={[]} isLoading />
+      <DataTable columns={sampleColumns} rows={[]} emptyMessage="Inclua filtros diferentes para visualizar resultados." />
+      <DataTable columns={sampleColumns} rows={[]} error="Servidor indisponível. Tente novamente mais tarde." />
+      <DataTable columns={sampleColumns} rows={sampleRows} disabled caption="Interação temporariamente bloqueada" />
+    </div>
+  </Story>
+</Canvas>
+
+## Props disponíveis
+<ArgsTable of={DataTable} />
