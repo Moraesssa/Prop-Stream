@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import './App.css';
 import AppShell from './app/AppShell';
+import UserPreferencesLoader from './app/UserPreferencesLoader';
 
 const OriginationDomain = lazy(() => import('./domains/originacao'));
 const AnalysisDomain = lazy(() => import('./domains/analise'));
@@ -20,6 +21,7 @@ function HomePage() {
 function App() {
   return (
     <Suspense fallback={<div className="app-loading">Carregando módulo...</div>}>
+      <UserPreferencesLoader />
       <Routes>
         <Route path="/" element={<AppShell />}>
           <Route index element={<HomePage />} />
