@@ -1,0 +1,40 @@
+import { Meta, Title, Subtitle, Description, Canvas, Story, ArgsTable } from '@storybook/blocks';
+import { BarChart } from './BarChart';
+
+const chartData = [
+  { label: 'Janeiro', value: 45 },
+  { label: 'Fevereiro', value: 60 },
+  { label: 'Março', value: 32 },
+  { label: 'Abril', value: 78 }
+];
+
+<Meta title="Design System/Bar Chart" component={BarChart} />
+
+<Title>BarChart</Title>
+<Subtitle>Visualização simples para valores comparativos.</Subtitle>
+<Description>
+  Utilize o gráfico de barras para comparar resultados entre categorias. A função <code>valueFormatter</code> permite
+  formatar números conforme o contexto (percentual, moeda, volume). Prefira até 8 barras para manter a legibilidade.
+</Description>
+
+## Demonstração básica
+<Canvas>
+  <Story name="Default">
+    <BarChart title="Novos leads por mês" description="Baseado nas oportunidades do último trimestre" data={chartData} />
+  </Story>
+</Canvas>
+
+## Estados de carregamento, erro e desativado
+<Canvas>
+  <Story name="Estados">
+    <div style={{ display: 'grid', gap: 'var(--ds-spacing-5)' }}>
+      <BarChart title="Carregando" data={[]} isLoading />
+      <BarChart title="Erro" data={[]} error="Falha ao buscar dados da API." />
+      <BarChart title="Sem dados" data={[]} emptyMessage="Selecione um período para visualizar o desempenho." />
+      <BarChart title="Somente leitura" data={chartData} disabled description="Atualização automática desativada." />
+    </div>
+  </Story>
+</Canvas>
+
+## Props disponíveis
+<ArgsTable of={BarChart} />

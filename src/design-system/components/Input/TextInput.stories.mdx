@@ -1,0 +1,40 @@
+import { Meta, Title, Subtitle, Description, Canvas, Story, ArgsTable } from '@storybook/blocks';
+import { TextInput } from './TextInput';
+
+<Meta title="Design System/Text Input" component={TextInput} />
+
+<Title>TextInput</Title>
+<Subtitle>Campo de entrada simples com suporte a descrição, ícones e estados de validação.</Subtitle>
+<Description>
+  Priorize o uso do label visível e utilize os estados para comunicar feedback claro ao usuário. O estado
+  "error" deve trazer uma mensagem objetiva. Combine "description" com "hint" para fornecer instruções
+  complementares.
+</Description>
+
+## Uso padrão
+<Canvas>
+  <Story name="Default" args={{ label: 'E-mail', placeholder: 'nome@empresa.com' }}>
+    {({ args }) => <TextInput {...args} />}
+  </Story>
+</Canvas>
+
+## Estados de carregamento e desativado
+<Canvas>
+  <Story name="Estados" args={{ label: 'CPF', placeholder: '000.000.000-00' }}>
+    {({ args }) => (
+      <div style={{ display: 'grid', gap: 'var(--ds-spacing-4)' }}>
+        <TextInput {...args} loading description="Validando documento" />
+        <TextInput {...args} disabled hint="Disponível apenas para administradores" />
+        <TextInput
+          {...args}
+          state="error"
+          error="CPF inválido. Confira os números informados."
+          description="Insira apenas dígitos, sem caracteres especiais."
+        />
+      </div>
+    )}
+  </Story>
+</Canvas>
+
+## Props disponíveis
+<ArgsTable of={TextInput} />

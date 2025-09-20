@@ -1,0 +1,63 @@
+:root,
+[data-ds-theme] {
+  color-scheme: light dark;
+}
+
+.ds-provider {
+  min-height: 100%;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.ds-provider *,
+.ds-provider *::before,
+.ds-provider *::after {
+  box-sizing: border-box;
+}
+
+.ds-text-muted {
+  color: var(--ds-colors-text-muted);
+}
+
+.ds-card {
+  background-color: var(--ds-colors-surface);
+  border: 1px solid var(--ds-colors-border);
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-shadow-sm);
+  padding: var(--ds-spacing-5);
+}
+
+.ds-spinner {
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  animation: ds-spin 0.8s linear infinite;
+}
+
+.ds-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.08) 25%,
+    rgba(148, 163, 184, 0.24) 37%,
+    rgba(148, 163, 184, 0.08) 63%
+  );
+  background-size: 400% 100%;
+  animation: ds-skeleton 1.4s ease infinite;
+  border-radius: var(--ds-radius-sm);
+}
+
+@keyframes ds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ds-skeleton {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
