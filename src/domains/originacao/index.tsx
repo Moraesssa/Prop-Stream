@@ -614,7 +614,7 @@ export default function OriginationDomain() {
         <Route index element={<OriginationOverview />} />
         <Route path="pipeline" element={<OriginationPipeline />} />
         <Route path="relatorios" element={<OriginationReports />} />
-        <Route path="*" element={<Navigate to="." replace />} />
+        <Route path="*" element={<Navigate to=".." replace />} />
       </Route>
     </Routes>
   );

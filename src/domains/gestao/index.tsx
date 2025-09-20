@@ -227,7 +227,7 @@ export default function PortfolioDomain() {
         <Route index element={<PortfolioOverview />} />
         <Route path="distribuicao" element={<PortfolioDistribution />} />
         <Route path="indicadores" element={<PortfolioIndicators />} />
-        <Route path="*" element={<Navigate to="." replace />} />
+        <Route path="*" element={<Navigate to=".." replace />} />
       </Route>
     </Routes>
   );
