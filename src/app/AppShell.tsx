@@ -1,6 +1,11 @@
 import { useEffect, useId, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import './AppShell.css';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  selectActivePortfolioId,
+  setActivePortfolioId,
+} from '@/store/portfolioSlice';
 
 const DOMAINS = [
   { label: 'Originação de Negócios', path: '/origination' },
@@ -21,26 +26,33 @@ export function AppShell() {
   const [isOpen, setIsOpen] = useState(false);
   const alertsTitleId = useId();
   const portfolioLabelId = useId();
-  const [selectedPortfolio, setSelectedPortfolio] = useState(() => {
-    if (typeof window === 'undefined') {
-      return PORTFOLIO_OPTIONS[0]?.value ?? '';
+  const dispatch = useAppDispatch();
+  const selectedPortfolio = useAppSelector(selectActivePortfolioId);
+  const [isPortfolioInitialized, setPortfolioInitialized] = useState(false);
+
+  useEffect(() => {
+    if (isPortfolioInitialized) {
+      return;
     }
 
-    return (
-      window.localStorage.getItem(PORTFOLIO_STORAGE_KEY) ??
-      (PORTFOLIO_OPTIONS[0]?.value ?? '')
-    );
-  });
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem(PORTFOLIO_STORAGE_KEY);
+      if (stored) {
+        dispatch(setActivePortfolioId(stored));
+      } else if (!selectedPortfolio && PORTFOLIO_OPTIONS[0]) {
+        dispatch(setActivePortfolioId(PORTFOLIO_OPTIONS[0].value));
+      }
+    }
+
+    setPortfolioInitialized(true);
+  }, [dispatch, isPortfolioInitialized, selectedPortfolio]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !selectedPortfolio) {
       return;
     }
 
-    window.localStorage.setItem(
-      PORTFOLIO_STORAGE_KEY,
-      selectedPortfolio
-    );
+    window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, selectedPortfolio);
   }, [selectedPortfolio]);
   return (
     <div className="app-shell">
@@ -77,12 +89,14 @@ export function AppShell() {
             >
               Portfólio ativo
             </label>
-            <select
-              id={portfolioLabelId}
-              className="app-shell__portfolio-select"
-              value={selectedPortfolio}
-              onChange={(event) => setSelectedPortfolio(event.target.value)}
-            >
+          <select
+            id={portfolioLabelId}
+            className="app-shell__portfolio-select"
+            value={selectedPortfolio}
+            onChange={(event) =>
+              dispatch(setActivePortfolioId(event.target.value))
+            }
+          >
               {PORTFOLIO_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}

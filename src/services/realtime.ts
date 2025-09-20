@@ -145,7 +145,7 @@ function appendTokenToUrl(url: string, token: string | null): string {
     const parsed = new URL(url, base);
     parsed.searchParams.set('token', token);
     return parsed.toString();
-  } catch (error) {
+  } catch {
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}token=${encodeURIComponent(token)}`;
   }
@@ -227,7 +227,7 @@ function parseRealtimeMessage(event: MessageEvent): RealtimeMessage {
       } else {
         data = parsed;
       }
-    } catch (error) {
+    } catch {
       data = event.data;
     }
   } else if (
@@ -282,11 +282,9 @@ function scheduleReconnect() {
   reconnectAttempts = attempt;
 }
 
-async function createSocket(
-  options: InternalRealtimeOptions,
-): Promise<WebSocket> {
-  return new Promise(async (resolve, reject) => {
-    try {
+function createSocket(options: InternalRealtimeOptions): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    (async () => {
       const token = await resolveToken(options.token);
       const targetUrl = appendTokenToUrl(
         resolveRealtimeUrl(options.url),
@@ -328,7 +326,9 @@ async function createSocket(
         if (!settled) {
           settled = true;
           reject(
-            new Error(`Realtime connection closed before opening (code ${event.code})`),
+            new Error(
+              `Realtime connection closed before opening (code ${event.code})`,
+            ),
           );
         }
 
@@ -366,9 +366,9 @@ async function createSocket(
       socket.addEventListener('error', handleError);
 
       activeCleanup = cleanup;
-    } catch (error) {
+    })().catch((error) => {
       reject(error instanceof Error ? error : new Error(String(error)));
-    }
+    });
   });
 }
 

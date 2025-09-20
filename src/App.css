@@ -27,3 +27,378 @@
   text-align: center;
   color: #0f172a;
 }
+
+.domain {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: clamp(1.5rem, 2vw, 2.5rem);
+  background: #f8fafc;
+  color: #0f172a;
+  min-height: 100%;
+}
+
+.domain__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 60rem;
+}
+
+.domain__nav {
+  border-bottom: 1px solid #cbd5f5;
+}
+
+.domain__nav-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+}
+
+.domain__nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-decoration: none;
+  color: #1e293b;
+  background: #e2e8f0;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.domain__nav-link:hover {
+  background: #cbd5f5;
+}
+
+.domain__nav-link--active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.domain__content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.domain__section {
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: clamp(1.25rem, 2vw, 2rem);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.domain__section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.domain__section-header--with-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.domain__section-caption {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.domain__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.domain__metric {
+  background: #f1f5f9;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.domain__metric-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.domain__metric-value {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.domain__metric-caption {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.domain__alert {
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+}
+
+.domain__alert--error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid rgba(185, 28, 28, 0.2);
+}
+
+.domain__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.domain__toolbar-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.domain__toolbar-select {
+  appearance: none;
+  border: 1px solid #cbd5f5;
+  background: #fff;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.95rem;
+  min-width: 8rem;
+}
+
+.domain__toolbar-action {
+  border: 1px solid #2563eb;
+  background: transparent;
+  color: #2563eb;
+  border-radius: 9999px;
+  padding: 0.45rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.domain__toolbar-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.domain__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.domain__form-fieldset {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.domain__form-legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.domain__form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.domain__form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.domain__form-input {
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #cbd5f5;
+  font-size: 0.95rem;
+}
+
+.domain__form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.domain__button {
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 0.65rem;
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.domain__button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.domain__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.domain__button--secondary {
+  background: #0f172a;
+}
+
+.domain__button--danger {
+  background: #dc2626;
+}
+
+.domain__table-wrapper {
+  overflow-x: auto;
+}
+
+.domain__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.domain__table th,
+.domain__table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.domain__table thead tr {
+  background: #f1f5f9;
+}
+
+.domain__table-row--optimistic {
+  opacity: 0.65;
+}
+
+.domain__table-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.domain__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.domain__list--columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.domain__list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.domain__list-label {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.domain__list-value {
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+
+.domain__list-description {
+  margin: 0.25rem 0 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.domain__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #e2e8f0;
+  color: #1f2937;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.domain__badge--positive {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.domain__badge--negative {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.domain__badge--neutral {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.domain__status {
+  margin: 0;
+  color: #334155;
+}
+
+.domain__panel {
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.domain__panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.domain__panel-status {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.domain__panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}

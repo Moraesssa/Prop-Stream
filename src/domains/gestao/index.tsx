@@ -1,5 +1,14 @@
 import { NavLink, Outlet, Route, Routes } from 'react-router-dom';
 
+import { usePortfolioSnapshotQuery } from '@/hooks/usePortfolioQueries';
+import { useAppSelector } from '@/store/hooks';
+import {
+  selectActivePortfolioId,
+  selectPortfolioError,
+  selectPortfolioSnapshot,
+  selectPortfolioStatus,
+} from '@/store/portfolioSlice';
+
 type NavigationLink = {
   readonly label: string;
   readonly to: string;
@@ -12,7 +21,21 @@ const LINKS: NavigationLink[] = [
   { label: 'Indicadores operacionais', to: 'indicadores' },
 ];
 
+const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+  maximumFractionDigits: 0,
+});
+
+const percentFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'percent',
+  maximumFractionDigits: 1,
+});
+
 function PortfolioLayout() {
+  const activePortfolioId = useAppSelector(selectActivePortfolioId);
+  usePortfolioSnapshotQuery({ portfolioId: activePortfolioId });
+
   return (
     <section className="domain domain--portfolio">
       <header className="domain__header">
@@ -51,37 +74,148 @@ function PortfolioLayout() {
 }
 
 function PortfolioOverview() {
+  const snapshot = useAppSelector(selectPortfolioSnapshot);
+  const status = useAppSelector(selectPortfolioStatus);
+  const error = useAppSelector(selectPortfolioError);
+
   return (
     <article className="domain__section">
-      <h2>Visão consolidada</h2>
-      <p>
-        Monitore patrimônio líquido, distribuição geográfica e principais
-        eventos de cada portfólio sob gestão.
-      </p>
+      <header className="domain__section-header">
+        <h2>Visão consolidada</h2>
+        <p className="domain__section-caption">
+          Patrimônio líquido, fluxo de caixa e rentabilidade acumulada.
+        </p>
+      </header>
+
+      {status === 'failed' && error ? (
+        <div className="domain__alert domain__alert--error" role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      {!snapshot && status === 'loading' ? (
+        <p className="domain__status">Carregando dados do portfólio…</p>
+      ) : null}
+
+      {snapshot ? (
+        <dl className="domain__metrics">
+          <div className="domain__metric">
+            <dt className="domain__metric-title">Valor de mercado</dt>
+            <dd className="domain__metric-value">
+              {currencyFormatter.format(snapshot.totals.currentValue)}
+            </dd>
+            <dd className="domain__metric-caption">
+              Soma atualizada dos ativos sob gestão
+            </dd>
+          </div>
+          <div className="domain__metric">
+            <dt className="domain__metric-title">Capital investido</dt>
+            <dd className="domain__metric-value">
+              {currencyFormatter.format(snapshot.totals.invested)}
+            </dd>
+            <dd className="domain__metric-caption">
+              Exposição acumulada desde o início do veículo
+            </dd>
+          </div>
+          <div className="domain__metric">
+            <dt className="domain__metric-title">Rentabilidade anual</dt>
+            <dd className="domain__metric-value">
+              {percentFormatter.format(snapshot.totals.irr / 100)}
+            </dd>
+            <dd className="domain__metric-caption">
+              Taxa interna de retorno consolidada
+            </dd>
+          </div>
+          <div className="domain__metric">
+            <dt className="domain__metric-title">Ocupação</dt>
+            <dd className="domain__metric-value">
+              {percentFormatter.format(snapshot.totals.occupancy / 100)}
+            </dd>
+            <dd className="domain__metric-caption">
+              Média ponderada entre os ativos de renda
+            </dd>
+          </div>
+        </dl>
+      ) : null}
     </article>
   );
 }
 
 function PortfolioDistribution() {
+  const snapshot = useAppSelector(selectPortfolioSnapshot);
+
   return (
     <article className="domain__section">
-      <h2>Distribuição de portfólio</h2>
-      <p>
-        Analise a composição dos ativos por classe, estágio de desenvolvimento e
-        alocação prevista versus realizada.
-      </p>
+      <header className="domain__section-header">
+        <h2>Distribuição de portfólio</h2>
+        <p className="domain__section-caption">
+          Acompanhe alocação por ativo e veja desvios em relação à meta.
+        </p>
+      </header>
+
+      {snapshot ? (
+        <div className="domain__table-wrapper">
+          <table className="domain__table">
+            <thead>
+              <tr>
+                <th>Ativo</th>
+                <th>Alocação</th>
+                <th>Valor atual</th>
+                <th>Ocupação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {snapshot.positions.map((position) => (
+                <tr key={position.id}>
+                  <td>{position.name}</td>
+                  <td>{percentFormatter.format(position.allocation / 100)}</td>
+                  <td>{currencyFormatter.format(position.currentValue)}</td>
+                  <td>{percentFormatter.format(position.occupancy / 100)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p>Selecione um portfólio ativo para visualizar a distribuição.</p>
+      )}
     </article>
   );
 }
 
 function PortfolioIndicators() {
+  const snapshot = useAppSelector(selectPortfolioSnapshot);
+
   return (
     <article className="domain__section">
-      <h2>Indicadores operacionais</h2>
-      <p>
-        Acompanhe ocupação, inadimplência e despesas recorrentes para agir
-        rapidamente sobre ativos fora da meta.
-      </p>
+      <header className="domain__section-header">
+        <h2>Indicadores operacionais</h2>
+        <p className="domain__section-caption">
+          Eventos futuros e tarefas para manter os ativos saudáveis.
+        </p>
+      </header>
+
+      {snapshot ? (
+        <ul className="domain__list">
+          {snapshot.events.length === 0 ? (
+            <li>Sem eventos planejados para os próximos dias.</li>
+          ) : (
+            snapshot.events.map((event) => (
+              <li key={event.id} className="domain__list-item">
+                <div>
+                  <strong>{event.title}</strong>
+                  <p className="domain__list-description">{event.description}</p>
+                </div>
+                <span className="domain__badge domain__badge--neutral">
+                  {new Date(event.date).toLocaleDateString('pt-BR')}
+                </span>
+              </li>
+            ))
+          )}
+        </ul>
+      ) : (
+        <p>Nenhum indicador operacional disponível.</p>
+      )}
     </article>
   );
 }
