@@ -21,3 +21,9 @@
   max-width: 32rem;
   margin: 0;
 }
+
+.app-loading {
+  padding: 2rem;
+  text-align: center;
+  color: #0f172a;
+}
