@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 
 import dashboardsReducer from './dashboardsSlice';
+import alertsReducer from './alertsSlice';
 import pipelineReducer from './pipelineSlice';
 import portfolioReducer from './portfolioSlice';
 import userReducer from './user';
@@ -11,6 +12,7 @@ export const store = configureStore({
     dashboards: dashboardsReducer,
     portfolio: portfolioReducer,
     user: userReducer,
+    alerts: alertsReducer,
   },
 });
 

@@ -9,6 +9,7 @@ import portfolioReducer from '@/store/portfolioSlice';
 import pipelineReducer from '@/store/pipelineSlice';
 import dashboardsReducer from '@/store/dashboardsSlice';
 import userReducer from '@/store/user';
+import alertsReducer from '@/store/alertsSlice';
 
 const PORTFOLIO_STORAGE_KEY = 'prop-stream:selected-portfolio';
 
@@ -19,6 +20,7 @@ function createTestStore() {
       dashboards: dashboardsReducer,
       portfolio: portfolioReducer,
       user: userReducer,
+      alerts: alertsReducer,
     },
   });
 }
