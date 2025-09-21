@@ -32,6 +32,7 @@ import {
   upsertSavedFilter,
 } from '@/store/user';
 import { trackEvent } from '@/observability/metrics';
+import { exportOriginationReports } from './exportReports';
 
 type NavigationLink = {
   readonly label: string;
@@ -616,6 +617,8 @@ function OriginationReports() {
   const activePortfolioId = useAppSelector((state) =>
     selectActivePortfolioId(state),
   );
+  const { showToast } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
   const query = useDashboardSummaryQuery('origination', {
     filters: activePortfolioId ? { portfolioId: activePortfolioId } : undefined,
   });
@@ -632,15 +635,85 @@ function OriginationReports() {
   const breakdowns = summary?.breakdowns ?? [];
   const highlights = summary?.highlights ?? [];
 
+  const handleExportReports = async () => {
+    if (!summary) {
+      showToast({
+        title: 'Exportação indisponível',
+        description: 'Sincronize os relatórios antes de exportar os dados.',
+        tone: 'warning',
+      });
+      trackEvent('origination.reports.export.unavailable');
+      return;
+    }
+
+    setIsExporting(true);
+    const startedAt = Date.now();
+    trackEvent('origination.reports.export.started', {
+      metricsCount: metrics.length,
+      breakdownsCount: breakdowns.length,
+      highlightsCount: highlights.length,
+    });
+
+    try {
+      exportOriginationReports({
+        metrics,
+        breakdowns,
+        highlights,
+        updatedAt: summary.updatedAt,
+      });
+
+      showToast({
+        title: 'Exportação concluída',
+        description: 'Os indicadores foram exportados com sucesso.',
+        tone: 'success',
+      });
+
+      trackEvent('origination.reports.export.succeeded', {
+        metricsCount: metrics.length,
+        breakdownsCount: breakdowns.length,
+        highlightsCount: highlights.length,
+        durationMs: Date.now() - startedAt,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      trackEvent('origination.reports.export.failed', {
+        metricsCount: metrics.length,
+        breakdownsCount: breakdowns.length,
+        highlightsCount: highlights.length,
+        error: message,
+      });
+
+      showToast({
+        title: 'Erro na exportação',
+        description: 'Não foi possível gerar o arquivo. Tente novamente.',
+        tone: 'error',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <article className="domain__section">
-      <header className="domain__section-header">
-        <h2>Relatórios e indicadores</h2>
-        {summary?.updatedAt ? (
-          <span className="domain__section-caption">
-            Atualizado em {dateFormatter.format(new Date(summary.updatedAt))}
-          </span>
-        ) : null}
+      <header className="domain__section-header domain__section-header--with-controls">
+        <div>
+          <h2>Relatórios e indicadores</h2>
+          {summary?.updatedAt ? (
+            <span className="domain__section-caption">
+              Atualizado em {dateFormatter.format(new Date(summary.updatedAt))}
+            </span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="domain__button domain__button--secondary"
+          onClick={handleExportReports}
+          disabled={!summary || isExporting}
+          aria-busy={isExporting ? 'true' : undefined}
+        >
+          {isExporting ? 'Gerando arquivo…' : 'Exportar dados'}
+        </button>
       </header>
 
       {status === 'failed' && error ? (
