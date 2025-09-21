@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import './AppShell.css';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -11,6 +11,7 @@ import {
   selectUserProfile,
   toggleFixedWidget,
 } from '@/store/user';
+import { selectAlerts } from '@/store/alertsSlice';
 
 const DOMAINS = [
   { label: 'Originação de Negócios', path: '/origination' },
@@ -49,7 +50,28 @@ export function AppShell() {
   );
   const userProfile = useAppSelector((state) => selectUserProfile(state));
   const fixedWidgets = useAppSelector((state) => selectUserFixedWidgets(state));
+  const alerts = useAppSelector((state) => selectAlerts(state));
   const [isPortfolioInitialized, setPortfolioInitialized] = useState(false);
+
+  const timeFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    [],
+  );
+
+  const severityLabel = useMemo(
+    () =>
+      ({
+        info: 'Informativo',
+        success: 'Sucesso',
+        warning: 'Atenção',
+        error: 'Crítico',
+      } as const),
+    [],
+  );
 
   useEffect(() => {
     if (isPortfolioInitialized) {
@@ -216,7 +238,36 @@ export function AppShell() {
             </button>
           </div>
           <ul className="app-shell__alerts-list">
-            <li>Nenhum alerta no momento.</li>
+            {alerts.length === 0 ? (
+              <li className="app-shell__alert app-shell__alert--empty">
+                Nenhum alerta no momento.
+              </li>
+            ) : (
+              alerts.map((alert) => {
+                const toneClass = `app-shell__alert-badge app-shell__alert-badge--${alert.severity}`;
+                const timestamp = timeFormatter.format(new Date(alert.receivedAt));
+                return (
+                  <li
+                    key={alert.id}
+                    className={`app-shell__alert app-shell__alert--${alert.severity}`}
+                  >
+                    <div className="app-shell__alert-header">
+                      <span className={toneClass}>{severityLabel[alert.severity]}</span>
+                      <strong>{alert.title}</strong>
+                    </div>
+                    {alert.description ? (
+                      <p className="app-shell__alert-description">{alert.description}</p>
+                    ) : null}
+                    <div className="app-shell__alert-meta">
+                      {alert.source ? (
+                        <span className="app-shell__alert-source">{alert.source}</span>
+                      ) : null}
+                      <time dateTime={new Date(alert.receivedAt).toISOString()}>{timestamp}</time>
+                    </div>
+                  </li>
+                );
+              })
+            )}
           </ul>
         </aside>
       </div>
