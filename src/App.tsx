@@ -5,19 +5,11 @@ import './App.css';
 import AppShell from './app/AppShell';
 import HttpEventsListener from './app/HttpEventsListener';
 import UserPreferencesLoader from './app/UserPreferencesLoader';
+import HomePage from './home/HomePage';
 
 const OriginationDomain = lazy(() => import('./domains/originacao'));
 const AnalysisDomain = lazy(() => import('./domains/analise'));
 const PortfolioDomain = lazy(() => import('./domains/gestao'));
-
-function HomePage() {
-  return (
-    <section className="app">
-      <h1>Prop-Stream</h1>
-      <p>Seu cockpit inteligente para investimentos imobiliários.</p>
-    </section>
-  );
-}
 
 function App() {
   return (
